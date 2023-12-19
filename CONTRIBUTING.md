@@ -21,6 +21,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 - [Your First Code Contribution](#your-first-code-contribution)
 - [Improving The Documentation](#improving-the-documentation)
 - [Styleguides](#styleguides)
+- [Branching Strategy](#branching)
 - [Commit Messages](#commit-messages)
 - [Join The Project Team](#join-the-project-team)
 
@@ -126,6 +127,14 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/RSparl
 <!-- You might want to create an issue template for enhancement suggestions that can be used as a guide and that defines the structure of the information to be included. If you do so, reference it here in the description. -->
 
 ### Your First Code Contribution
+
+You will need the
+[.NET 7 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/7.0),
+and a C# editor of your choice. Ensure VintageStory is installed in the default
+location, or the `VINTAGE_STORY` environment variable points to the root of the
+install. Additionally, this code base uses
+[`Newtonsoft.json`](https://github.com/JamesNK/Newtonsoft.Json).
+
 <!-- TODO
 include Setup of env, IDE and typical getting started instructions?
 
@@ -138,6 +147,22 @@ Updating, improving and correcting the documentation
 -->
 
 ## Styleguides
+
+As we grow, we are further solidifying the standards and styles. This will
+have to be added to in the future.
+
+### Branching
+
+We will be using the Gitflow Workflow. Below is the list of branches:
+
+  - `main`: used for production release
+  - `develop`: contains stable features for the next release
+  - `feature/*`: created to write and stabilize code for the `develop` branch
+    - features must be stable and tested before merged
+  - `release-*`: created from the develop branch when feature set considered done
+  - `patch-*`: hotfixes of the release branch -- no major functionality changes
+
+
 ### Commit Messages
 <!-- TODO
 
