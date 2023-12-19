@@ -159,8 +159,8 @@ We will be using the Gitflow Workflow. Below is the list of branches:
   - `develop`: contains stable features for the next release
   - `feature/*`: created to write and stabilize code for the `develop` branch
     - features must be stable and tested before merged
-  - `release-*`: created from the develop branch when feature set considered done
-  - `patch-*`: hotfixes of the release branch -- no major functionality changes
+  - `release/*`: created from the develop branch when feature set considered done
+  - `patch/*`: hotfixes of the release branch -- no major functionality changes
 
 
 ### Commit Messages
