@@ -2,46 +2,64 @@
     {
         "name": "combatant",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "farmer",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "homekeeper",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "hunter",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "miner",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "processer",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "rancher",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "smith",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     },
     {
         "name": "woodsman",
         "level": 0,
-        "attributes": {}
+        "paths": [
+            "default"
+        ]
     }
 ]
