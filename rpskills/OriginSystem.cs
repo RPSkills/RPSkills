@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using HarmonyLib;
 using Vintagestory.API.Client;
 using Vintagestory.API.Common;
 using Vintagestory.API.Server;
 using Vintagestory.API.Util;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Vintagestory.Common;
-using Vintagestory;
-using rpskills.CoreSys;
+using rpskills.OriginSys;
+using rpskills.Commands;
+using System.Linq;
+using System.Text;
 
 // TODO(chris): delete all FEAT(chris) annotations before merging
 // NOTE(chris): all current WARN(chris) in this file indicates client-server
@@ -22,9 +19,7 @@ namespace rpskills
     /// <summary>
     /// ModSystem is the base for any VintageStory code mods.
     /// </summary>
-    /// HarmonyPatch is required for any class that patches
-    [HarmonyPatch]
-    public class CoreSystem : ModSystem
+    public class OriginSystem : ModSystem
     {
 
         /*
@@ -35,7 +30,7 @@ namespace rpskills
 
         const string MOD_NAME = "rpskills";
         const string CHANNEL_CORE_RPSKILLS = "rpskills-core";
-        const string CFG_HERITAGE = "chooseHeritage";
+        const string CFG_ORIGIN = "chooseOrigin";
 
 
         /*
@@ -49,8 +44,8 @@ namespace rpskills
         Dictionary<string, Path> PathsByName;
         List<Skill> Skills;
         Dictionary<string, Skill> SkillsByName;
-        List<Heritage> Heritages;
-        Dictionary<string, Heritage> HeritagesByName;
+        List<Origin> Origins;
+        Dictionary<string, Origin> OriginsByName;
 
 
 
@@ -61,44 +56,22 @@ namespace rpskills
         /// </summary>
         ICoreAPI api;
 
-        Harmony harmony;
-
         public override void Start(ICoreAPI api)
         {
-            // NOTE(Chris): The Start* methods of base are empty.
             this.api = api;
-
-            // harmony = new Harmony(MOD_NAME);
-            // harmony.PatchAll();
 
             api.Network
                 .RegisterChannel(CHANNEL_CORE_RPSKILLS)
-                .RegisterMessageType<HeritageSelectionPacket>()
-                .RegisterMessageType<HeritageSelectedState>();
+                .RegisterMessageType<OriginSelectionPacket>()
+                .RegisterMessageType<OriginSelectedState>();
 
         }
 
-        // FIXME(chris): I think this can be removed eventually?
-        // [HarmonyPostfix]
-        // [HarmonyPatch(typeof(EntityPlayer), "EntityPlayer")]
-        // public static void EntityPlayerInit(EntityPlayer __instance) {
-        //     __instance.Stats
-        //         .Register("combatant", EnumStatBlendType.FlatSum)
-        //         .Register("farmer ", EnumStatBlendType.FlatSum)
-        //         .Register("homekeeper", EnumStatBlendType.FlatSum)
-        //         .Register("hunter", EnumStatBlendType.FlatSum)
-        //         .Register("miner", EnumStatBlendType.FlatSum)
-        //         .Register("processer", EnumStatBlendType.FlatSum)
-        //         .Register("rancher", EnumStatBlendType.FlatSum)
-        //         .Register("smith", EnumStatBlendType.FlatSum)
-        //         .Register("woodsman", EnumStatBlendType.FlatSum);
-        // }
-
-        private void loadCharacterHeritages()
+        private void loadCharacterOrigin()
         {
             this.Paths = this.api.Assets
-                .Get("rpskills:config/paths.json").ToObject<List<Path>>(null);
-            api.Logger.Event("loaded paths");
+                .Get<List<Path>>(AssetLocation.Create("rpskills:config/paths.json", "rpskills"));
+            api.Logger.Debug("Loaded paths");
             PathsByName = new Dictionary<string, Path>();
             foreach (Path path in this.Paths)
             {
@@ -106,25 +79,30 @@ namespace rpskills
             }
 
             this.Skills = this.api.Assets
-                .Get("rpskills:config/skills.json").ToObject<List<Skill>>(null);
+                .Get<List<Skill>>(AssetLocation.Create("rpskills:config/skills.json", "rpskills"));
             SkillsByName = new Dictionary<string, Skill>();
             foreach (Skill skill in this.Skills)
             {
                 this.SkillsByName[skill.Name] = skill;
             }
-            api.Logger.Event("loaded skills");
+            api.Logger.Debug("loaded skills");
 
-            this.Heritages = this.api.Assets
-                .Get("rpskills:config/heritages.json").ToObject<List<Heritage>>(null);
-            HeritagesByName = new Dictionary<string, Heritage>();
-            foreach (Heritage heritage in this.Heritages)
+            this.Origins = this.api.Assets
+                .Get<List<Origin>>(AssetLocation.Create("rpskills:config/origins.json", "rpskills"));
+            OriginsByName = new Dictionary<string, Origin>();
+            foreach (Origin origin in this.Origins)
             {
-                this.HeritagesByName[heritage.Name] = heritage;
+                this.OriginsByName[origin.Name] = origin;
             }
-            api.Logger.Event("loaded heritages");
+            api.Logger.Debug("loaded origins");
+
+            foreach (Skill skill in this.Skills)
+            {
+                api.Logger.Debug(skill.ToString());
+            }
 
 
-            this.api.Logger.Debug("Heritages and Skills loaded!");
+            this.api.Logger.Event("Origins System loaded!");
         }
 
 
@@ -148,11 +126,11 @@ namespace rpskills
         {
             this.capi = api;
 
-            // tell client how to handle server sending heritage information
+            // tell client how to handle server sending origin information
             api.Network
                 .GetChannel(CHANNEL_CORE_RPSKILLS)
-                .SetMessageHandler<HeritageSelectedState>(
-                    new NetworkServerMessageHandler<HeritageSelectedState>(
+                .SetMessageHandler<OriginSelectedState>(
+                    new NetworkServerMessageHandler<OriginSelectedState>(
                         this.onSelectedState
                 ));
 
@@ -161,7 +139,7 @@ namespace rpskills
             api.Event.PlayerJoin += this.Event_PlayerJoin;
 
             // FEAT(chris): primary functionality of the branch
-            api.Event.BlockTexturesLoaded += this.loadCharacterHeritages;
+            api.Event.BlockTexturesLoaded += this.loadCharacterOrigin;
 
             // NOTE(chris): the SendPlayerNowReady call is in the
             //              GuiDialogCharacterBase.OnGuiClose override for the
@@ -170,10 +148,115 @@ namespace rpskills
             // this.charDlg = api.Gui.LoadedGuis
             //     .Find((GuiDialog dlg) => dlg is GuiDialogCharacterBase)
             //     as GuiDialogCharacterBase;
+
+
+            // create client commands
+            IChatCommand get = api.ChatCommands.Create("get");
+            get.RequiresPlayer();
+            get.RequiresPrivilege(Privilege.root);
+            get.WithDescription("Read WatchedAttributes of the caller.");
+            get.HandleWith(args => {
+                string cmdargs = args.RawArgs.PopAll();
+                string result = "given " + cmdargs + "\n";
+                EntityPlayer eplr = args.Caller.Player.WorldData.EntityPlayer;
+
+                foreach (var attr in eplr.WatchedAttributes)
+                {
+                    result += attr.Key;
+                    result += "\n";
+                }
+
+                return TextCommandResult.Success(result);
+            });
+
+            IChatCommand get_skill = get.BeginSubCommand("skill");
+            get_skill.RequiresPrivilege(Privilege.root);
+            get_skill.WithDescription("Read Origin Skills of the caller.");
+            get_skill.HandleWith(args => {
+                string result = "";
+                EntityPlayer eplr = args.Caller.Player.WorldData.EntityPlayer;
+
+                foreach(var attr in eplr.WatchedAttributes)
+                {
+                    if (!attr.Key.StartsWith("s_"))
+                    {
+                        continue;
+                    }
+
+                    result += attr.Key + ": " + attr.Value.ToString() + "\n";
+
+                }
+
+                return TextCommandResult.Success(result);
+            });
+            get_skill.EndSubCommand();
+
+
+            get.Validate(); // name, priv, desc, handler
+
+
+
+
+            IChatCommand set = api.ChatCommands.Create("set");
+            set.RequiresPlayer();
+            // set.WithArgs( populate with Skills )
+            set.RequiresPrivilege("root");
+            set.WithDescription("Resets Origin Skills of the caller.");
+            set.HandleWith(args => {
+                float new_val = 0f;
+                string result = "";
+                EntityPlayer eplr = args.Caller.Player.WorldData.EntityPlayer;
+
+                foreach (Skill skill in Skills)
+                {
+                    eplr.WatchedAttributes.SetFloat("s_" + skill.Name, new_val);
+                }
+
+                return TextCommandResult.Success(result);
+            });
+
+            IChatCommand set_skill = set.BeginSubCommand("skill");
+            set_skill.RequiresPrivilege(Privilege.root);
+            set_skill.WithDescription("Sets the given skill of the caller to a given value.");
+            set_skill.HandleWith(args => {
+                float new_val = 4f;
+                string skill = "s_woodsman";
+                string result = "";
+                EntityPlayer eplr = args.Caller.Player.WorldData.EntityPlayer;
+
+                result += "set " + skill + " to lv " + new_val;
+                eplr.WatchedAttributes.SetFloat(skill, new_val);
+
+                return TextCommandResult.Success(result);
+            });
+            set_skill.EndSubCommand();
+
+
+            set.Validate(); // name, priv, desc, handler
+
+
+
+            IChatCommand del = api.ChatCommands.Create("del");
+            del.RequiresPrivilege(Privilege.root);
+            del.WithDescription("Deletes all Origin Skills from the caller's player data.");
+            del.HandleWith(args => {
+                string result = "";
+                EntityPlayer eplr = args.Caller.Player.WorldData.EntityPlayer;
+
+                foreach (Skill skill in Skills)
+                {
+                    eplr.WatchedAttributes.RemoveAttribute("s_" + skill.Name);
+                }
+
+                return TextCommandResult.Success(result);
+            });
+
+
+            del.Validate(); // name, priv, desc, handler
         }
 
 
-        private void onSelectedState(HeritageSelectedState s)
+        private void onSelectedState(OriginSelectedState s)
         {
             this.api.Logger.Debug("Recieved status of heriatge selection: " + s.DidSelect);
             this.didSelect = s.DidSelect;
@@ -190,18 +273,16 @@ namespace rpskills
         ICoreServerAPI sapi;
 
 
-
-
         public override void StartServerSide(ICoreServerAPI api)
         {
             this.sapi = api;
 
             // NOTE(chris): this big block tells the server how to reply to
-            //              incoming packets with respect to heritage selection
+            //              incoming packets with respect to origin selection
             api.Network.GetChannel(CHANNEL_CORE_RPSKILLS)
-                .SetMessageHandler<HeritageSelectionPacket>(
-                    new NetworkClientMessageHandler<HeritageSelectionPacket>(
-                        this.onHeritageSelection
+                .SetMessageHandler<OriginSelectionPacket>(
+                    new NetworkClientMessageHandler<OriginSelectionPacket>(
+                        this.onOriginSelection
                     )
                 );
 
@@ -211,33 +292,44 @@ namespace rpskills
             // FEAT(chris): primary functionality of the branch
             api.Event.ServerRunPhase(
                 EnumServerRunPhase.ModsAndConfigReady,
-                new Action(this.loadCharacterHeritages)
+                new Action(this.loadCharacterOrigin)
             );
+
+
+            // Register commands
+
+            IChatCommand cmd = api.ChatCommands.Create("foo");
+            cmd.RequiresPrivilege(Privilege.root);
+            cmd.HandleWith((a) => {
+                return TextCommandResult.Success("foo was completed!");
+            });
+
         }
 
         /// <summary>
-        /// how the server handles a player selecting a heritage. this is the
-        /// wrapper for character heritage 'setter'
+        /// how the server handles a player selecting a origin. this is the
+        /// wrapper for character origin 'setter'
         /// </summary>
         /// <param name="fromPlayer">packet-emitting client</param>
-        /// <param name="packet">heritage selection data</param>
+        /// <param name="packet">origin selection data</param>
         /// <exception cref="NotImplementedException">You Should Not See This in dev</exception>
-        private void onHeritageSelection(IServerPlayer fromPlayer, HeritageSelectionPacket packet)
+        private void onOriginSelection(IServerPlayer fromPlayer, OriginSelectionPacket packet)
         {
+            // TODO(chris): remove negation after commands are working!!!
             bool didSelectBefore = SerializerUtil.Deserialize<bool>(
-                fromPlayer.GetModdata(CFG_HERITAGE), false
+                fromPlayer.GetModdata(CFG_ORIGIN), false
             );
 
             if (didSelectBefore) {
-                api.Logger.Warning("you've already chosen a heritage");
+                api.Logger.Debug("you've already chosen an origin");
                 return;
             }
 
-            api.Logger.Debug("successfully chosen " + packet.HeritageName);
+            api.Logger.Debug("successfully chosen " + packet.OriginName);
 
             if(packet.DidSelect) {
                 fromPlayer.SetModdata(
-                    CFG_HERITAGE,
+                    CFG_ORIGIN,
                     SerializerUtil.Serialize<bool>(packet.DidSelect)
                 );
 
@@ -245,7 +337,14 @@ namespace rpskills
                 //              CharacterSystem.onCharacterSelection
 
                 // TODO(chris): use player.WatchedAttributes.SetString to store
-                //              the heritage name (setCharacterClass)
+                //              the origin name (setCharacterClass)
+
+                foreach(Skill skill in Skills)
+                {
+                    fromPlayer.WorldData.EntityPlayer.WatchedAttributes.RemoveAttribute("s_" + skill.Name);
+                    api.Logger.Debug("Setting " + skill.Name + "@" + skill.Level);
+                    fromPlayer.WorldData.EntityPlayer.WatchedAttributes.SetFloat("s_" + skill.Name, skill.Level);
+                }
 
                 // TODO(chris): next, attributes are to be applied
                 //              (applyTraitAttributes)
@@ -271,7 +370,7 @@ namespace rpskills
 
 
         /// <summary>
-        /// here, we want to make sure all of the player heritage data is
+        /// here, we want to make sure all of the player origin data is
         /// selected and valid. If handling is set to `PreventDefault`, then
         /// the system must eventually call `Network.SendPlayerNowReady()`!
         /// </summary>
@@ -322,13 +421,13 @@ namespace rpskills
             //              player-chosen values to put here.
             // tell the server what the player selected
             didSelect = true;
-            HeritageSelectionPacket p = new HeritageSelectionPacket {
+            OriginSelectionPacket p = new OriginSelectionPacket {
                 DidSelect = didSelect,
-                HeritageName = this.HeritagesByName["average"].Name,
+                OriginName = this.OriginsByName["average"].Name,
             };
             capi.Network
                 .GetChannel(CHANNEL_CORE_RPSKILLS)
-                .SendPacket<HeritageSelectionPacket>
+                .SendPacket<OriginSelectionPacket>
                 (
                     p
                 );
@@ -347,9 +446,10 @@ namespace rpskills
             // WARN(chris): we are using Moddata(createCharacter) as a
             //              placeholder for now -- functionality is tied to
             //              VintageStory.GameContent.CharacterSystem
-            this.didSelect = SerializerUtil.Deserialize<bool>(
-                byPlayer.GetModdata("createCharacter"), false
-            );
+            // this.didSelect = SerializerUtil.Deserialize<bool>(
+            //     byPlayer.GetModdata("createCharacter"), false
+            // );
+            this.didSelect = false;
             if (!this.didSelect) {
                 api.Logger.Debug("Character creation has not happened yet.");
             } else {
@@ -358,8 +458,8 @@ namespace rpskills
 
             this.sapi.Network
                 .GetChannel(CHANNEL_CORE_RPSKILLS)
-                .SendPacket<HeritageSelectedState>(
-                    new HeritageSelectedState
+                .SendPacket<OriginSelectedState>(
+                    new OriginSelectedState
                     {
                         DidSelect = this.didSelect
                     },
@@ -385,10 +485,5 @@ namespace rpskills
             // harmony.UnpatchAll(MOD_NAME);
         }
 
-    }
-
-    namespace Dummy
-    {
-        
     }
 }

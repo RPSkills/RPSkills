@@ -2,16 +2,16 @@
 
 using ProtoBuf;
 
-namespace rpskills.CoreSys
+namespace rpskills.OriginSys
 {
     
-    class HeritageSelectedState
+    class OriginSelectedState
     {
         public bool DidSelect;
     }
 
     /// <summary>
-    /// Contains all data regarding Heritage selection.
+    /// Contains all data regarding Origin selection.
     /// 
     /// See Vintagestory.GameContent.CharacterSelectionPacket for more details.
     /// </summary>
@@ -19,10 +19,10 @@ namespace rpskills.CoreSys
     //              a constructor was implicitly defined. For now, I'll
     //              explicitly define.
     [ProtoContract(ImplicitFields = ImplicitFields.AllPublic)]
-    public class HeritageSelectionPacket
+    public class OriginSelectionPacket
     {
         public bool DidSelect;
-        public string HeritageName;
+        public string OriginName;
 
     }
 }

@@ -1,0 +1,8 @@
+[
+    {
+        "Name": "ping",
+        "Description": "ping pong",
+        "Privilege": "root",
+        "Handler": "ping"
+    }
+]
